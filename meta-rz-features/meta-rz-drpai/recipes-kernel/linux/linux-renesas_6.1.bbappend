@@ -8,4 +8,5 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}/:"
 SRC_URI:append = "\
 	file://0001-add-drpai-property-to-devicetree.patch \
 	file://0002-enable-drpai-driver.patch \
+	file://0003-set-cru-amnaxiattr-axilen.patch \
 "

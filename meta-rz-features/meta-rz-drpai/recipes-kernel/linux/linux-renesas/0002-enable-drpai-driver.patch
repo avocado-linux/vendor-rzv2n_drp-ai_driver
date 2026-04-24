@@ -1,35 +1,5 @@
-From ee31fb71a3d09b5cf61668da9e27f9fb27e376cc Mon Sep 17 00:00:00 2001
-From: Your Name <you@example.com>
-Date: Wed, 4 Dec 2024 21:49:50 +0900
-Subject: [PATCH 2/2] enable drpai driver
-
----
- drivers/Kconfig            |    2 +
- drivers/Makefile           |    1 +
- drivers/drpai/Kconfig      |   14 +
- drivers/drpai/Makefile     |   13 +
- drivers/drpai/drpai-core.c | 1734 +++++++++++++
- drivers/drpai/drpai-core.h |  120 +
- drivers/drpai/drpai-if.c   | 4759 ++++++++++++++++++++++++++++++++++++
- drivers/drpai/drpai-reg.h  | 1053 ++++++++
- drivers/drpai/lock_drpai.c |  592 +++++
- drivers/drpai/lock_drpai.h |   69 +
- include/linux/drpai.h      |   22 +
- include/uapi/linux/drpai.h |  148 ++
- 12 files changed, 8527 insertions(+)
- create mode 100644 drivers/drpai/Kconfig
- create mode 100644 drivers/drpai/Makefile
- create mode 100644 drivers/drpai/drpai-core.c
- create mode 100644 drivers/drpai/drpai-core.h
- create mode 100644 drivers/drpai/drpai-if.c
- create mode 100644 drivers/drpai/drpai-reg.h
- create mode 100644 drivers/drpai/lock_drpai.c
- create mode 100644 drivers/drpai/lock_drpai.h
- create mode 100644 include/linux/drpai.h
- create mode 100644 include/uapi/linux/drpai.h
-
 diff --git a/drivers/Kconfig b/drivers/Kconfig
-index 04a20db857ba..5ee8129878ee 100644
+index 04a20db..5ee8129 100644
 --- a/drivers/Kconfig
 +++ b/drivers/Kconfig
 @@ -241,4 +241,6 @@ source "drivers/peci/Kconfig"
@@ -40,7 +10,7 @@ index 04a20db857ba..5ee8129878ee 100644
 +
  endmenu
 diff --git a/drivers/Makefile b/drivers/Makefile
-index 9fc91d2bbe4c..96c402fd0346 100644
+index 9fc91d2..96c402f 100644
 --- a/drivers/Makefile
 +++ b/drivers/Makefile
 @@ -190,3 +190,4 @@ obj-$(CONFIG_COUNTER)		+= counter/
@@ -48,9 +18,9 @@ index 9fc91d2bbe4c..96c402fd0346 100644
  obj-$(CONFIG_PECI)		+= peci/
  obj-$(CONFIG_HTE)		+= hte/
 +obj-$(CONFIG_DRPAI)		+= drpai/
-diff --git a/drivers/drpai/Kconfig b/drivers/drpai/Kconfig
+diff --git b/drivers/drpai/Kconfig b/drivers/drpai/Kconfig
 new file mode 100644
-index 000000000000..ccbf90afaac7
+index 0000000..ccbf90a
 --- /dev/null
 +++ b/drivers/drpai/Kconfig
 @@ -0,0 +1,14 @@
@@ -68,9 +38,9 @@ index 000000000000..ccbf90afaac7
 +	  If you want DRP-AI support, you should say Y here.
 +
 +endmenu
-diff --git a/drivers/drpai/Makefile b/drivers/drpai/Makefile
+diff --git b/drivers/drpai/Makefile b/drivers/drpai/Makefile
 new file mode 100644
-index 000000000000..4bb42dc50036
+index 0000000..4bb42dc
 --- /dev/null
 +++ b/drivers/drpai/Makefile
 @@ -0,0 +1,13 @@
@@ -87,9 +57,9 @@ index 000000000000..4bb42dc50036
 +else
 +obj-$(CONFIG_DRPAI)	+= drpai-core.o drpai-if.o
 +endif
-diff --git a/drivers/drpai/drpai-core.c b/drivers/drpai/drpai-core.c
+diff --git b/drivers/drpai/drpai-core.c b/drivers/drpai/drpai-core.c
 new file mode 100644
-index 000000000000..207e5da82510
+index 0000000..207e5da
 --- /dev/null
 +++ b/drivers/drpai/drpai-core.c
 @@ -0,0 +1,1734 @@
@@ -1827,9 +1797,9 @@ index 000000000000..207e5da82510
 +MODULE_AUTHOR("Renesas Electronics Corporation");
 +MODULE_LICENSE("GPL v2");
 +#endif
-diff --git a/drivers/drpai/drpai-core.h b/drivers/drpai/drpai-core.h
+diff --git b/drivers/drpai/drpai-core.h b/drivers/drpai/drpai-core.h
 new file mode 100644
-index 000000000000..4c1753985091
+index 0000000..4c17539
 --- /dev/null
 +++ b/drivers/drpai/drpai-core.h
 @@ -0,0 +1,120 @@
@@ -1953,12 +1923,12 @@ index 000000000000..4c1753985091
 +int32_t initialize_cpg(addr_t cpg_base_addr);
 +
 +#endif /* DRPAI__H */
-diff --git a/drivers/drpai/drpai-if.c b/drivers/drpai/drpai-if.c
+diff --git b/drivers/drpai/drpai-if.c b/drivers/drpai/drpai-if.c
 new file mode 100644
-index 000000000000..26fa9fe4c3cc
+index 0000000..1119795
 --- /dev/null
 +++ b/drivers/drpai/drpai-if.c
-@@ -0,0 +1,4759 @@
+@@ -0,0 +1,4198 @@
 +/*
 + * Driver for the Renesas RZ/V2H, RZ/V2N DRP-AI unit
 + *
@@ -2031,7 +2001,7 @@ index 000000000000..26fa9fe4c3cc
 +#endif
 +
 +/*Macro definitions*/
-+#define DRPAI_DRIVER_VERSION        "1.30 rel.3"
++#define DRPAI_DRIVER_VERSION        "1.40 rel.3"
 +#define DRPAI_DEV_NUM               (1)
 +#define DRPAI_DRIVER_NAME           "drpai"     /* Device name */
 +#define DRPAI_64BYTE_ALIGN          (0x3F)      /* Check 64-byte alignment */
@@ -2129,14 +2099,6 @@ index 000000000000..26fa9fe4c3cc
 +#define AIMAC_CH_NUM                (1)
 +#endif
 +
-+/* V2L conditional compilation */
-+#if 0
-+#define ISP_FINISH_SUCCESS          (0)
-+#define DRPAI_SGL_DRP_DESC_SIZE     (80)
-+#define DRPAI_DESC_CMD_SIZE         (16)
-+#define DRPAI_CMA_SIZE              ((DRPAI_SGL_DRP_DESC_SIZE * DRPAI_SEQ_NUM) + DRPAI_DESC_CMD_SIZE + 64)
-+#endif
-+
 +/* A function called from the kernel */
 +static int drpai_probe(struct platform_device *pdev);
 +static int drpai_remove(struct platform_device *pdev);
@@ -2153,10 +2115,6 @@ index 000000000000..26fa9fe4c3cc
 +static irqreturn_t irq_drp_errint(int irq, void *dev);
 +static irqreturn_t irq_mac_nmlint(int irq, void *dev);
 +static irqreturn_t irq_mac_errint(int irq, void *dev);
-+/* V2L conditional compilation */
-+#if 0
-+static irqreturn_t irq_drp_nmlint(int irq, void *dev);
-+#endif
 +
 +/* Internal function */
 +static int drpai_regist_driver(void);
@@ -2178,10 +2136,6 @@ index 000000000000..26fa9fe4c3cc
 +static long drpai_ioctl_set_drpai_freq(struct file *filp, unsigned int cmd, unsigned long arg);
 +static long drpai_ioctl_set_adrconv(struct file *filp, unsigned int cmd, unsigned long arg);
 +static long drpai_ioctl_set_extra_area(struct file *filp, unsigned int cmd, unsigned long arg);
-+/* V2L conditional compilation */
-+#if 0
-+static long drpai_ioctl_set_seq(struct file *filp, unsigned int cmd, unsigned long arg);
-+#endif
 +static int32_t reverse_adrconv_tbl(uint8_t *adrconv_tbl, uint64_t conv, uint32_t *org);
 +static char *get_param_attr(char *line, char *attr, unsigned long *rvalue, char **str);
 +static int8_t drp_param_change16(uint64_t base, uint64_t offset, uint16_t value);
@@ -2191,18 +2145,6 @@ index 000000000000..26fa9fe4c3cc
 +static int drpai_drp_cpg_init(void);
 +static int drpai_open_process(void);
 +static int drpai_close_process(void);
-+
-+/* V2L conditional compilation */
-+#if 0
-+/* DRP init function for V2L simple ISP */
-+static int drpai_drp_config_init(void);
-+static void drpai_drp_config_uninit(void);
-+
-+/* Function called from the kernel for V2L simple ISP */
-+int drpai_open_k(void);
-+int drpai_close_k(void);
-+int drpai_start_k(drpai_data_t *arg, void (*isp_finish)(int result));
-+#endif
 +
 +static long drpai_ioctl_read_drp_reg(struct file *filp, unsigned int cmd, unsigned long arg);
 +static long drpai_ioctl_write_drp_reg(struct file *filp, unsigned int cmd, unsigned long arg);
@@ -2240,17 +2182,6 @@ index 000000000000..26fa9fe4c3cc
 +    void __iomem *aimac_base;
 +    struct reset_control *rstc;
 +    uint32_t irq_flag;
-+
-+/* V2L conditional compilation */
-+#if 0
-+/* V2L ISP */
-+    struct clk *clk_int;
-+    struct clk *clk_aclk_drp;
-+    struct clk *clk_mclk;
-+    struct clk *clk_dclkin;
-+    struct clk *clk_aclk;
-+    void (*isp_finish_loc)(int);
-+#endif
 +};
 +
 +static DECLARE_WAIT_QUEUE_HEAD(drpai_waitq);
@@ -2305,26 +2236,6 @@ index 000000000000..26fa9fe4c3cc
 +static resource_size_t image_region_addr;
 +static resource_size_t image_region_size;
 +
-+/* V2L conditional compilation */
-+#if 0
-+/* ISP */
-+static char* p_dmabuf_vaddr;
-+static dma_addr_t p_dmabuf_phyaddr;
-+static unsigned char drp_single_desc_bin[] =
-+{
-+  0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+  0x00, 0x80, 0x00, 0x01, 0x00, 0x91, 0x81, 0x50, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
-+  0x07, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+  0x00, 0x80, 0x00, 0x01, 0x00, 0x91, 0x81, 0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+  0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-+};
-+static drpai_seq_t seq;
-+drpai_odif_intcnto_t odif_intcnto;
-+static uint32_t exe_mode;
-+/* ISP */
-+#endif
-+
 +/* handler table */
 +static struct file_operations s_mydevice_fops =
 +{
@@ -2346,19 +2257,6 @@ index 000000000000..26fa9fe4c3cc
 +    { .compatible = "renesas,rzv2h-drpai", },
 +    { .compatible = "renesas,rzv2n-drpai", },
 +    { /* sentinel */ }
-+};
-+
-+static struct platform_driver drpai_platform_driver =
-+{
-+    .driver = {
-+        .name   = "drpai-rz",
-+        .of_match_table = drpai_match,
-+    },
-+    .probe      = drpai_probe,
-+    .remove     = drpai_remove,
-+#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
-+    .shutdown   = drpai_shutdown,
-+#endif
 +};
 +
 +static int drpai_probe(struct platform_device *pdev)
@@ -2854,7 +2752,7 @@ index 000000000000..26fa9fe4c3cc
 +    uint8_t *kbuf = NULL;
 +    volatile void *p_drpai_cma = 0;
 +    uint32_t reg_val;
-+    uint32_t i;
++    uint32_t i = 0;
 +    struct drpai_rw_status *drpai_rw_status = filp->private_data;
 +    struct drpai_priv *priv = drpai_priv;
 +    uint64_t addr;
@@ -3075,13 +2973,6 @@ index 000000000000..26fa9fe4c3cc
 +        DRPAI_DEBUG_PRINT("[ioctl(DRPAI_SET_EXTRA_AREA)]\n");
 +        result = drpai_ioctl_set_extra_area(filp, cmd, arg);
 +        break;
-+/* V2L conditional compilation */
-+#if 0
-+    case DRPAI_SET_SEQ:
-+        DRPAI_DEBUG_PRINT("[ioctl(DRPAI_SET_SEQ)]\n");
-+        result = drpai_ioctl_set_seq(filp, cmd, arg);
-+        break;
-+#endif
 +    case DRPAI_READ_DRP_REG:
 +        DRPAI_DEBUG_PRINT("[ioctl(DRPAI_READ_DRP_REG)]\n");
 +        result = drpai_ioctl_read_drp_reg(filp, cmd, arg);
@@ -3140,90 +3031,6 @@ index 000000000000..26fa9fe4c3cc
 +    return retmask;
 +}
 +
-+/* V2L conditional compilation */
-+#if 0
-+static irqreturn_t irq_drp_nmlint(int irq, void *dev)
-+{
-+    unsigned long flags;
-+    struct drpai_priv *priv = drpai_priv;
-+    drpai_odif_intcnto_t local_odif_intcnto;
-+    void (*finish_callback)(int);
-+
-+    DRPAI_DEBUG_PRINT("start.\n");
-+
-+    spin_lock_irqsave(&priv->lock, flags);
-+    /* For success ISP call back*/
-+    finish_callback = priv->isp_finish_loc;
-+
-+    DRPAI_DEBUG_PRINT("\n");
-+    DRPAI_DEBUG_PRINT("status1:%d\n", priv->drpai_status.status);
-+
-+    /* DRP normal interrupt processing */
-+    R_DRPAI_DRP_Nmlint(drp_base_addr[0], 0, &local_odif_intcnto);
-+
-+    odif_intcnto.ch0 += local_odif_intcnto.ch0;
-+    odif_intcnto.ch1 += local_odif_intcnto.ch1;
-+    odif_intcnto.ch2 += local_odif_intcnto.ch2;
-+    odif_intcnto.ch3 += local_odif_intcnto.ch3;
-+
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO0 : 0x%08X\n", odif_intcnto.ch0);
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO1 : 0x%08X\n", odif_intcnto.ch1);
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO2 : 0x%08X\n", odif_intcnto.ch2);
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO3 : 0x%08X\n", odif_intcnto.ch3);
-+
-+    DRPAI_DEBUG_PRINT("local_ODIF_INTCNTO0 : 0x%08X\n", local_odif_intcnto.ch0);
-+    DRPAI_DEBUG_PRINT("local_ODIF_INTCNTO1 : 0x%08X\n", local_odif_intcnto.ch1);
-+    DRPAI_DEBUG_PRINT("local_ODIF_INTCNTO2 : 0x%08X\n", local_odif_intcnto.ch2);
-+    DRPAI_DEBUG_PRINT("local_ODIF_INTCNTO3 : 0x%08X\n", local_odif_intcnto.ch3);
-+
-+/* DRP single operation */
-+    if(DRPAI_EXE_AI == exe_mode)
-+    {
-+        if  ((1 == odif_intcnto.ch0) &&
-+            (1 == odif_intcnto.ch1) &&
-+            (1 == odif_intcnto.ch2) &&
-+            (1 == odif_intcnto.ch3))
-+        {
-+            /* Internal state update */
-+            priv->drpai_status.status = DRPAI_STATUS_IDLE;
-+            DRPAI_DEBUG_PRINT("status2:%d\n", priv->drpai_status.status);
-+            /* For success ISP call back*/
-+            if(NULL != finish_callback)
-+            {
-+                (*finish_callback)(ISP_FINISH_SUCCESS);
-+            }
-+        }
-+    }
-+    else if (DRPAI_EXE_DRP == exe_mode)
-+    {
-+        if ((seq.num == odif_intcnto.ch0) &&
-+            (seq.num == odif_intcnto.ch1) &&
-+            (seq.num == odif_intcnto.ch2) &&
-+            (seq.num == odif_intcnto.ch3))
-+        {
-+            /* Internal state update */
-+            priv->drpai_status.status = DRPAI_STATUS_IDLE;
-+            DRPAI_DEBUG_PRINT("status2:%d\n", priv->drpai_status.status);
-+            priv->irq_flag = IRQ_CHECK_DISABLE;
-+            /* Wake up the process */
-+            wake_up_interruptible( &drpai_waitq );
-+        }
-+    }
-+    else
-+    {
-+        // do nothing
-+    }
-+/* DRP single operation */
-+
-+    priv->isp_finish_loc = NULL;
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    DRPAI_DEBUG_PRINT("end.\n");
-+
-+    return IRQ_HANDLED;
-+}
-+#endif
-+
 +static irqreturn_t irq_drp_errint(int irq, void *dev)
 +{
 +    unsigned long flags;
@@ -3231,10 +3038,6 @@ index 000000000000..26fa9fe4c3cc
 +    irqreturn_t ret = IRQ_HANDLED;
 +#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
 +    int flag_drpai_shared_used;
-+#endif
-+/* V2L conditional compilation */
-+#if 0
-+    void (*finish_callback)(int); /* For error simple ISP call back*/
 +#endif
 +
 +    DRPAI_DEBUG_PRINT("start.\n");
@@ -3255,16 +3058,6 @@ index 000000000000..26fa9fe4c3cc
 +    }
 +#endif
 +
-+/* V2L conditional compilation */
-+#if 0
-+    finish_callback = priv->isp_finish_loc;
-+
-+    if(NULL != finish_callback)
-+    {
-+        (*finish_callback)(-EIO);
-+    }
-+#endif
-+
 +    DRPAI_DEBUG_PRINT("status1:   %d\n", priv->drpai_status.status);
 +
 +    /* DRP error interrupt processing */
@@ -3275,18 +3068,8 @@ index 000000000000..26fa9fe4c3cc
 +    priv->drpai_status.status = DRPAI_STATUS_IDLE;
 +    priv->irq_flag = IRQ_CHECK_DISABLE;
 +
-+#if 0
-+    /* V2L conditional compilation */
-+    /* Wake up the process when it's not ISP mode*/
-+    if(NULL == finish_callback)
-+    {
-+        wake_up_interruptible( &drpai_waitq );
-+    }
-+    priv->isp_finish_loc = NULL;
-+#else
 +    /* Wake up the process */
 +    wake_up_interruptible( &drpai_waitq );
-+#endif
 +#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
 +end:
 +    if(0 == flag_drpai_shared_used)
@@ -3709,47 +3492,6 @@ index 000000000000..26fa9fe4c3cc
 +        return ret;
 +    }
 +
-+/* V2L conditional compilation */
-+#if 0
-+
-+    irq = platform_get_irq(pdev, 0);
-+    ret = devm_request_irq(&pdev->dev, irq, irq_drp_nmlint, 0, "drpa nmlint", priv);
-+    if (ret) {
-+        dev_err(&pdev->dev, "Failed to claim IRQ!\n");
-+        return ret;
-+    }
-+    /* Get clock controller info */
-+    priv->clk_int = devm_clk_get(&pdev->dev, "intclk");
-+    if (IS_ERR(priv->clk_int)) {
-+        dev_err(&pdev->dev, "missing controller clock");
-+        return PTR_ERR(priv->clk_int);
-+    }
-+
-+    priv->clk_aclk_drp = devm_clk_get(&pdev->dev, "aclk_drp");
-+    if (IS_ERR(priv->clk_aclk_drp)) {
-+        dev_err(&pdev->dev, "missing controller clock");
-+        return PTR_ERR(priv->clk_aclk_drp);
-+    }
-+
-+    priv->clk_mclk = devm_clk_get(&pdev->dev, "mclk");
-+    if (IS_ERR(priv->clk_mclk)) {
-+        dev_err(&pdev->dev, "missing controller clock");
-+        return PTR_ERR(priv->clk_mclk);
-+    }
-+
-+    priv->clk_dclkin = devm_clk_get(&pdev->dev, "dclkin");
-+    if (IS_ERR(priv->clk_dclkin)) {
-+        dev_err(&pdev->dev, "missing controller clock");
-+        return PTR_ERR(priv->clk_dclkin);
-+    }
-+
-+    priv->clk_aclk = devm_clk_get(&pdev->dev, "aclk");
-+    if (IS_ERR(priv->clk_aclk)) {
-+        dev_err(&pdev->dev, "missing controller clock");
-+        return PTR_ERR(priv->clk_aclk);
-+    }
-+
-+#endif
 +#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
 +    drpai_shared_exclusion = NULL;
 +    np = of_parse_phandle(pdev->dev.of_node, "memory-shared-for-drpai-ext-cont", 0);
@@ -3894,6 +3636,12 @@ index 000000000000..26fa9fe4c3cc
 +    DRPAI_DEBUG_PRINT("end.\n");
 +}
 +
++/**
++ * Execute stop procedures for DRP and AIMAC
++ * For CPG, this function execute reset procedure.
++ * 
++ * @param ch Must be set 0.
++ */
 +static int8_t drpai_reset_device(uint32_t ch)
 +{
 +    int8_t retval;
@@ -3968,6 +3716,11 @@ index 000000000000..26fa9fe4c3cc
 +    return retval;
 +}
 +
++/**
++ * Execute initialization procedure for DRP and AIMAC.
++ * 
++ * @param ch Must be set 0.
++ */
 +static void drpai_init_device(uint32_t ch)
 +{
 +    unsigned long flags;
@@ -4108,12 +3861,6 @@ index 000000000000..26fa9fe4c3cc
 +{
 +    int result = 0;
 +    drpai_data_t proc[DRPAI_INDEX_NUM];
-+/* V2L conditional compilation */
-+#if 0
-+/* DRP single operation */
-+    drpai_data_t proc_drp[DRPAI_SEQ_NUM * 2];
-+/* DRP single operation */
-+#endif
 +    struct drpai_priv *priv = drpai_priv;
 +    unsigned long flags;
 +    int i;
@@ -4155,12 +3902,7 @@ index 000000000000..26fa9fe4c3cc
 +    }
 +    spin_unlock_irqrestore(&priv->lock, flags);
 +
-+/* V2L conditional compilation */
-+#if 0
-+/* DRP single operation */
-+    if(DRPAI_EXE_AI == exe_mode)
-+    {
-+#endif
++
 +        /* Copy arguments from user space to kernel space */
 +        if (copy_from_user(&proc[0], (void __user *)arg, sizeof(proc)))
 +        {
@@ -4337,92 +4079,6 @@ index 000000000000..26fa9fe4c3cc
 +            R_DRPAI_DRP_Start(drp_base_addr[0], 0, proc[DRPAI_INDEX_DRP_DESC].address);
 +            R_DRPAI_AIMAC_Start(aimac_base_address[0], 0, proc[DRPAI_INDEX_AIMAC_DESC].address, proc[DRPAI_INDEX_AIMAC_PARAM_DESC].address);
 +        }
-+/* V2L conditional compilation */
-+#if 0
-+    }
-+    else if (DRPAI_EXE_DRP == exe_mode)
-+    {
-+        odif_intcnto.ch0 = 0;
-+        odif_intcnto.ch1 = 0;
-+        odif_intcnto.ch2 = 0;
-+        odif_intcnto.ch3 = 0;
-+
-+        DRPAI_DEBUG_PRINT("DRP exe mode:%d\n", exe_mode);
-+        if (copy_from_user(&proc_drp[0], (void __user *)arg, sizeof(proc_drp)))
-+        {
-+            result = -EFAULT;
-+            goto end;
-+        }
-+        /* Check Argument */
-+        for (i = 0; i < (seq.num * 2); i++)
-+        {
-+            if (0 != (proc_drp[i].address & DRPAI_64BYTE_ALIGN))
-+            {
-+                result = -EINVAL;
-+                goto end;
-+            }
-+        }
-+        for (i = 0; i < seq.num; i++)
-+        {
-+            /* DRPcfg address and size settings */
-+            *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 4) = proc_drp[i * 2].address;
-+            *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 8) = proc_drp[i * 2].size;
-+
-+            /* DRP param address and size settings */
-+            *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 36) = proc_drp[i * 2 + 1].address;
-+            *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 40) = proc_drp[i * 2 + 1].size;
-+
-+            /* Link descriptor settings */
-+            if (i < (seq.num - 1))
-+            {
-+                /* LV enable */
-+                *(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 67) = 0x09;
-+
-+                /* Link pointer settings */
-+                if (DRPAI_DRP_NOLOAD == proc_drp[(i + 1) * 2].address)
-+                {
-+                    *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 68)
-+                    = p_dmabuf_phyaddr + (DRPAI_SGL_DRP_DESC_SIZE * (i + 1)) + DRPAI_DESC_CMD_SIZE;
-+                }
-+                else
-+                {
-+                    *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 68)
-+                    = p_dmabuf_phyaddr + (DRPAI_SGL_DRP_DESC_SIZE * (i + 1));
-+                }
-+            }
-+            else
-+            {
-+                /* LV disable */
-+                *(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 67) = 0x08;
-+            }
-+        }
-+        __flush_dcache_area(p_dmabuf_vaddr, DRPAI_CMA_SIZE);
-+
-+        /* DRPcfg load skip */
-+        if (DRPAI_DRP_NOLOAD == proc_drp[0].address)
-+        {
-+            p_dmabuf_phyaddr = p_dmabuf_phyaddr + DRPAI_DESC_CMD_SIZE;
-+        }
-+
-+        spin_lock_irqsave(&priv->lock, flags);
-+        /* Init drpai_status.err */
-+        priv->drpai_status.err = DRPAI_ERRINFO_SUCCESS;
-+        /* IDLE -> RUN */
-+        priv->drpai_status.status = DRPAI_STATUS_RUN;
-+        priv->irq_flag = IRQ_CHECK_ENABLE;
-+        spin_unlock_irqrestore(&priv->lock, flags);
-+        DRPAI_DEBUG_PRINT("status2:   %d\n", priv->drpai_status.status);
-+
-+        /* Kick */
-+        (void)R_DRPAI_DRP_Start(drp_base_addr[0], 0, p_dmabuf_phyaddr);
-+        (void)R_DRPAI_AIMAC_Start(aimac_base_address[0], 0, p_dmabuf_phyaddr + (DRPAI_SGL_DRP_DESC_SIZE * DRPAI_SEQ_NUM), &priv->lock);
-+    }
-+    else
-+    {
-+        // do nothing
-+    }
-+/* DRP single operation */
-+#endif
 +
 +    DRPAI_DEBUG_WAIT();
 +    goto end;
@@ -4489,25 +4145,12 @@ index 000000000000..26fa9fe4c3cc
 +    struct drpai_rw_status *drpai_rw_status = filp->private_data;
 +#endif
 +    unsigned long flags;
-+/* V2L conditional compilation */
-+#if 0
-+    void (*finish_callback)(int);
-+#endif
 +#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
 +    int flag_drpai_shared_used = -1;
 +    int flag_drpai_shared_init = -1;
 +#endif
 +
 +    DRPAI_DEBUG_PRINT("start.\n");
-+
-+/* V2L conditional compilation */
-+#if 0
-+    /* ISP */
-+    spin_lock_irqsave(&priv->lock, flags);
-+    finish_callback = drpai_priv->isp_finish_loc;
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+    /* ISP */
-+#endif
 +
 +    if(unlikely(down_timeout(&priv->sem, MAX_SEM_TIMEOUT)))
 +    {
@@ -4538,7 +4181,7 @@ index 000000000000..26fa9fe4c3cc
 +    flag_drpai_shared_init = R_DRPAI_IsDrpaiHwStatusActive(drpai_shared_exclusion);
 +    if(0 == flag_drpai_shared_init)
 +    {
-+        /* The DRP-AI is running. Therefore, stop the DRP-AI first. */
++        /* The DRP-AI is initialised. Therefore, stop the DRP-AI first. */
 +#endif
 +
 +    if(R_DRPAI_SUCCESS != drpai_reset_device(0))
@@ -4566,22 +4209,6 @@ index 000000000000..26fa9fe4c3cc
 +    /* Wake up the process */
 +    wake_up_interruptible( &drpai_waitq );
 +    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+/* V2L conditional compilation */
-+#if 0
-+    /* ISP */
-+    /* For reset ISP call back*/
-+    if(NULL != finish_callback)
-+    {
-+        /* ERROR No.: ERESTART*/
-+        (*finish_callback)(-ERESTART);
-+    }
-+    spin_lock_irqsave(&priv->lock, flags);
-+    drpai_priv->isp_finish_loc = NULL;
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+    /* For reset ISP call back*/
-+    /* ISP */
-+#endif
 +
 +    DRPAI_DEBUG_PRINT("status2:   %d\n", priv->drpai_status.status);
 +    DRPAI_DEBUG_PRINT("status_rw2:%d\n", drpai_rw_status->rw_status);
@@ -4689,6 +4316,12 @@ index 000000000000..26fa9fe4c3cc
 +    if ((DRPAI_ERRINFO_DRP_ERR == local_drpai_status.err) || (DRPAI_ERRINFO_AIMAC_ERR == local_drpai_status.err))
 +    {
 +        result = -EIO;
++        goto end;
++    }
++
++    if ((DRPAI_ERRINFO_SUSPEND == local_drpai_status.err))
++    {
++        result = -EAGAIN;
 +        goto end;
 +    }
 +
@@ -5536,65 +5169,6 @@ index 000000000000..26fa9fe4c3cc
 +    return result;
 +}
 +
-+/* V2L conditional compilation */
-+#if 0
-+static long drpai_ioctl_set_seq(struct file *filp, unsigned int cmd, unsigned long arg)
-+{
-+    long result = 0;
-+    struct drpai_priv *priv = drpai_priv;
-+    unsigned long flags;
-+
-+    DRPAI_DEBUG_PRINT(" start.\n");
-+    DRPAI_DEBUG_PRINT(" status1:%d\n", priv->drpai_status.status);
-+
-+    /* Check the internal state of DRP-AI */
-+    spin_lock_irqsave(&priv->lock, flags);
-+    if (DRPAI_STATUS_RUN == priv->drpai_status.status)
-+    {
-+        spin_unlock_irqrestore(&priv->lock, flags);
-+        result = -EBUSY;
-+        goto end;
-+    }
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    /* Copy arguments from user space to kernel space */
-+    if (copy_from_user(&seq, (void __user *)arg, sizeof(drpai_seq_t)))
-+    {
-+        result = -EFAULT;
-+        goto end;
-+    }
-+
-+    /* Check Argument DRP Simgle */
-+    if (DRPAI_SEQ_NUM < seq.num)
-+    {
-+        result = -EINVAL;
-+        goto end;
-+    }
-+
-+    if (DRPAI_EXE_DRP == seq.order[0])
-+    {
-+        exe_mode = DRPAI_EXE_DRP;
-+    }
-+    else if (DRPAI_EXE_AI == seq.order[0])
-+    {
-+        exe_mode = DRPAI_EXE_AI;
-+    }
-+    else
-+    {
-+        result = -EINVAL;
-+        goto end;
-+    }
-+
-+    DRPAI_DEBUG_PRINT(" DRP exe mode:%d\n", exe_mode);
-+
-+    DRPAI_DEBUG_PRINT(" status2:%d\n", priv->drpai_status.status);
-+end:
-+    DRPAI_DEBUG_PRINT(" end.\n");
-+
-+    return result;
-+}
-+/* DRP single operation */
-+#endif
 +
 +static long drpai_ioctl_get_drpai_area(struct file *filp, unsigned int cmd, unsigned long arg)
 +{
@@ -5823,9 +5397,6 @@ index 000000000000..26fa9fe4c3cc
 +
 +    if ((DRPAI_ADRCONV_MODE_REPLACE == adrconv.mode) || (DRPAI_ADRCONV_MODE_DISABLE == adrconv.mode))
 +    {
-+#if 0 /* debug */
-+        pr_info("[%s: %d](pid: %d) SET_ADRCONV clear table\n", __func__, __LINE__, current->pid);
-+#endif
 +        drpai_rw_status->adrconv_en = 0;
 +        for (tbl = 0; tbl < DRPAI_ADRCONV_NUM; tbl++)
 +        {
@@ -5838,9 +5409,6 @@ index 000000000000..26fa9fe4c3cc
 +            tbl_num = drpai_rw_status->image_region_vnum;
 +            map = (image_region_addr >> 24);
 +
-+#if 0 /* debug */
-+            pr_info("[%s: %d](pid: %d) SET_ADRCONV page=0x%02X, vnum=0x%02X, map=0x%04X\n", __func__, __LINE__, current->pid, page, tbl_num, map);
-+#endif
 +            for (tbl = page; tbl < (page + tbl_num); tbl++)
 +            {
 +                drpai_rw_status->adrconv_tbl[tbl * 4 + 0] = 1;             /* Valid           */
@@ -5899,9 +5467,6 @@ index 000000000000..26fa9fe4c3cc
 +
 +        /* apply */
 +        map = (uint32_t)(adrconv.conv_address >> 24);
-+#if 0 /* debug */
-+        pr_info("[%s: %d](pid: %d) SET_ADRCONV page=0x%02X, tbl_num=0x%02X, map=0x%04X\n", __func__, __LINE__, current->pid, page, tbl_num, map);
-+#endif
 +        for (tbl = page; tbl < (page + tbl_num); tbl++)
 +        {
 +            drpai_rw_status->adrconv_tbl[tbl * 4 + 0] = 1;             /* Valid           */
@@ -6001,18 +5566,12 @@ index 000000000000..26fa9fe4c3cc
 +
 +    if (DRPAI_MAX_32BIT == address)
 +    {
-+#if 0 /* debug */
-+        pr_info("[%s: %d](pid: %d) SET_EXTRA_AREA clear image region\n", __func__, __LINE__, current->pid);
-+#endif
 +        drpai_rw_status->image_region_vaddr = DRPAI_MAX_32BIT;
 +        drpai_rw_status->image_region_vnum  = 0;
 +    }
 +    else
 +    {
 +        map = (image_region_addr >> 24);
-+#if 0 /* debug */
-+        pr_info("[%s: %d](pid: %d) SET_EXTRA_AREA page=0x%02X, vnum=0x%02X, map=0x%04X\n", __func__, __LINE__, current->pid, page, tbl_num, map);
-+#endif
 +        for (tbl = page; tbl < (page + tbl_num); tbl++)
 +        {
 +            drpai_rw_status->adrconv_tbl[tbl * 4 + 0] = 1;             /* Valid           */
@@ -6044,16 +5603,6 @@ index 000000000000..26fa9fe4c3cc
 +    int result;
 +
 +    DRPAI_DEBUG_PRINT("start.\n");
-+
-+/* V2L conditional compilation */
-+#if 0
-+    /* Access clock interface */
-+    clk_prepare_enable(priv->clk_int);
-+    clk_prepare_enable(priv->clk_aclk_drp);
-+    clk_prepare_enable(priv->clk_mclk);
-+    clk_prepare_enable(priv->clk_dclkin);
-+    clk_prepare_enable(priv->clk_aclk);
-+#endif
 +
 +#if 1 /* for CPG direct access (preliminary) */
 +    result =  R_DRPAI_SUCCESS;
@@ -6095,22 +5644,9 @@ index 000000000000..26fa9fe4c3cc
 +    /* Initialize DRP-AI */
 +    drpai_init_device(0);
 +
-+/* V2L conditional compilation */
-+#if 0
-+    if(R_DRPAI_SUCCESS != drpai_drp_config_init())
-+    {
-+        ret = -ENOMEM;
-+        goto end;
-+    }
-+#endif
-+
 +    /* INIT -> IDLE */
 +    spin_lock_irqsave(&priv->lock, flags);
 +    priv->drpai_status.status = DRPAI_STATUS_IDLE;
-+/* V2L conditional compilation */
-+#if 0
-+    exe_mode = DRPAI_EXE_AI;
-+#endif
 +    spin_unlock_irqrestore(&priv->lock, flags);
 +
 +    ret = R_DRPAI_SUCCESS;
@@ -6130,19 +5666,6 @@ index 000000000000..26fa9fe4c3cc
 +
 +    (void)drpai_reset_device(0);
 +
-+/* V2L conditional compilation */
-+#if 0
-+    //CPG clock disable
-+    DRPAI_DEBUG_PRINT("CPG clock disable\n");
-+    clk_disable_unprepare(priv->clk_int);
-+    clk_disable_unprepare(priv->clk_aclk_drp);
-+    clk_disable_unprepare(priv->clk_mclk);
-+    clk_disable_unprepare(priv->clk_dclkin);
-+    clk_disable_unprepare(priv->clk_aclk);
-+
-+    drpai_drp_config_uninit();
-+#endif
-+
 +    /* IDLE -> INIT */
 +    /* RUN  -> INIT */
 +    spin_lock_irqsave(&priv->lock, flags);
@@ -6157,306 +5680,6 @@ index 000000000000..26fa9fe4c3cc
 +    return ret;
 +}
 +
-+/* V2L conditional compilation */
-+#if 0
-+/* ISP */
-+static int drpai_drp_config_init(void)
-+{
-+    int result;
-+    struct drpai_priv *priv = drpai_priv;
-+    struct device *dev = &priv->pdev->dev;
-+    int i;
-+
-+    DRPAI_DEBUG_PRINT("start.\n");
-+
-+    /* Get driver workspace from Linux CMA */
-+    p_dmabuf_vaddr = dma_alloc_coherent(dev, DRPAI_CMA_SIZE, &p_dmabuf_phyaddr, GFP_DMA);
-+    if (NULL == p_dmabuf_vaddr)
-+    {
-+        /* Error -ENOMEM */
-+        result = -1;
-+        goto end;
-+    }
-+    DRPAI_DEBUG_PRINT("dmabuf:0x%08X, dmaphys:0x%08X\n", p_dmabuf_vaddr, p_dmabuf_phyaddr);
-+
-+    /* 64bytes alignment adjustment */
-+    if (0 != (p_dmabuf_phyaddr & DRPAI_64BYTE_ALIGN))
-+    {
-+        p_dmabuf_vaddr = p_dmabuf_vaddr + (0x40 - (p_dmabuf_phyaddr & DRPAI_64BYTE_ALIGN));
-+        p_dmabuf_phyaddr = p_dmabuf_phyaddr + (0x40 - (p_dmabuf_phyaddr & DRPAI_64BYTE_ALIGN));
-+    }
-+
-+/* DRP single operation */
-+    /* Deploy drp_single_desc */
-+    for (i = 0; i < DRPAI_SEQ_NUM; i++)
-+    {
-+        memcpy(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i), &drp_single_desc_bin[0], sizeof(drp_single_desc_bin));
-+    }
-+/* DRP single operation */
-+
-+    __flush_dcache_area(p_dmabuf_vaddr, DRPAI_CMA_SIZE);
-+
-+    result = R_DRPAI_SUCCESS;
-+
-+    goto end;
-+end:
-+    DRPAI_DEBUG_PRINT("end.\n");
-+
-+    return result;
-+}
-+
-+static void drpai_drp_config_uninit(void)
-+{
-+    struct drpai_priv *priv = drpai_priv;
-+    struct device *dev = &priv->pdev->dev;
-+
-+    DRPAI_DEBUG_PRINT("start.\n");
-+
-+    dma_free_coherent(dev, DRPAI_CMA_SIZE, p_dmabuf_vaddr, p_dmabuf_phyaddr);
-+    DRPAI_DEBUG_PRINT("end.\n");
-+}
-+
-+int drpai_open_k(void)
-+{
-+    int result = 0;
-+    struct drpai_priv *priv = drpai_priv;
-+
-+    DRPAI_DEBUG_PRINT("start.\n");
-+    DRPAI_DEBUG_PRINT("status1:   %d\n", priv->drpai_status.status);
-+
-+    if(unlikely(down_timeout(&priv->sem, MAX_SEM_TIMEOUT)))
-+    {
-+        result = -ETIMEDOUT;
-+        DRPAI_DEBUG_PRINT("ETIMEDOUT.\n");
-+        goto end;
-+    }
-+
-+    if(likely(1 == refcount_read(&priv->count)))
-+    {
-+        result = drpai_open_process();
-+        if(R_DRPAI_SUCCESS != result)
-+        {
-+            goto end;
-+        }
-+    }
-+
-+    /* Increment reference count */
-+    refcount_inc(&priv->count);
-+
-+    DRPAI_DEBUG_PRINT("status2:%d\n", priv->drpai_status.status);
-+
-+    DRPAI_DEBUG_WAIT();
-+    goto end;
-+end:
-+    if(-ETIMEDOUT != result)
-+    {
-+        /* Return semaphore when no ETIMEOUT */
-+        up(&priv->sem);
-+    }
-+
-+    DRPAI_DEBUG_PRINT("end.\n");
-+
-+    return result;
-+}
-+
-+int drpai_close_k(void)
-+{
-+    int result = 0;
-+    struct drpai_priv *priv = drpai_priv;
-+    unsigned long flags;
-+
-+    DRPAI_DEBUG_PRINT("start.\n");
-+    DRPAI_DEBUG_PRINT("status1:   %d\n", priv->drpai_status.status);
-+
-+    if(unlikely(down_timeout(&priv->sem, MAX_SEM_TIMEOUT)))
-+    {
-+        result = -ETIMEDOUT;
-+        DRPAI_DEBUG_PRINT("ETIMEOUT.\n");
-+        goto end;
-+    }
-+
-+    /* Check status */
-+    spin_lock_irqsave(&priv->lock, flags);
-+    if (DRPAI_STATUS_INIT == priv->drpai_status.status)
-+    {
-+        spin_unlock_irqrestore(&priv->lock, flags);
-+        result = -EACCES;
-+        DRPAI_DEBUG_PRINT("EACCES.\n");
-+        goto end;
-+    }
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    if(2 == refcount_read(&priv->count))
-+    {
-+        result = drpai_close_process();
-+        if(R_DRPAI_SUCCESS != result)
-+        {
-+            goto end;
-+        }
-+    }
-+
-+    /* Decrement referenece count*/
-+    refcount_dec(&priv->count);
-+
-+    DRPAI_DEBUG_PRINT("status2:   %d\n", priv->drpai_status.status);
-+
-+    DRPAI_DEBUG_WAIT();
-+    goto end;
-+end:
-+    if(-ETIMEDOUT != result)
-+    {
-+        /* Return semaphore when no ETIMEOUT */
-+        up(&priv->sem);
-+    }
-+    DRPAI_DEBUG_PRINT("end.\n");
-+
-+    return result;
-+}
-+
-+int drpai_start_k(drpai_data_t *arg, void (*isp_finish)(int result))
-+{
-+    int result = 0;
-+    struct drpai_priv *priv = drpai_priv;
-+    drpai_data_t *proc_k;
-+    unsigned long flags;
-+    int i;
-+
-+    DRPAI_DEBUG_PRINT("start.\n");
-+
-+    if(unlikely(down_timeout(&priv->sem, MAX_SEM_TIMEOUT)))
-+    {
-+        result = -ETIMEDOUT;
-+        DRPAI_DEBUG_PRINT("ETIMEOUT.\n");
-+        goto end;
-+    }
-+
-+    DRPAI_DEBUG_PRINT("status1:   %d\n", priv->drpai_status.status);
-+
-+    /* Check H/W Error */
-+    spin_lock_irqsave(&priv->lock, flags);
-+    if ((DRPAI_ERRINFO_DRP_ERR == priv->drpai_status.err) || (DRPAI_ERRINFO_AIMAC_ERR == priv->drpai_status.err))
-+    {
-+        spin_unlock_irqrestore(&priv->lock, flags);
-+        result = -EIO;
-+        DRPAI_DEBUG_PRINT("EIO.\n");
-+        goto end;
-+    }
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    /* Check status */
-+    spin_lock_irqsave(&priv->lock, flags);
-+    if (DRPAI_STATUS_RUN == priv->drpai_status.status)
-+    {
-+        spin_unlock_irqrestore(&priv->lock, flags);
-+        result = -EBUSY;
-+        DRPAI_DEBUG_PRINT("EBUSY.\n");
-+        goto end;
-+    }
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    /* Check status */
-+    spin_lock_irqsave(&priv->lock, flags);
-+    if (DRPAI_STATUS_INIT == priv->drpai_status.status)
-+    {
-+        spin_unlock_irqrestore(&priv->lock, flags);
-+        result = -EACCES;
-+        DRPAI_DEBUG_PRINT("EACCES.\n");
-+        goto end;
-+    }
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    /* Check NULL */
-+    if (NULL == isp_finish)
-+    {
-+        result = -EINVAL;
-+        DRPAI_DEBUG_PRINT("EINVAL NULL function pointer.\n");
-+        goto end;
-+    }
-+    /* Referring the call back function info from ISP Lib */
-+    priv->isp_finish_loc = isp_finish;
-+
-+    /* Check NULL */
-+    if (NULL == arg)
-+    {
-+        result = -EINVAL;
-+        DRPAI_DEBUG_PRINT("EINVAL NULL argument pointer.\n");
-+        goto end;
-+    }
-+    /* Referring the obj file info from ISP Lib */
-+    proc_k = arg;
-+
-+    spin_lock_irqsave(&priv->lock, flags);
-+    odif_intcnto.ch0 = 0;
-+    odif_intcnto.ch1 = 0;
-+    odif_intcnto.ch2 = 0;
-+    odif_intcnto.ch3 = 0;
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO0 : 0x%08X\n", odif_intcnto.ch0);
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO1 : 0x%08X\n", odif_intcnto.ch1);
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO2 : 0x%08X\n", odif_intcnto.ch2);
-+    DRPAI_DEBUG_PRINT("ODIF_INTCNTO3 : 0x%08X\n", odif_intcnto.ch3);
-+
-+    /* Check Argument 64-byte*/
-+    for (i = 0; i < 2; i++)
-+    {
-+        if (0 != (proc_k[i].address & DRPAI_64BYTE_ALIGN))
-+        {
-+            result = -EINVAL;
-+            DRPAI_DEBUG_PRINT("EINVAL argument. Not 64-byte aligned.\n");
-+            goto end;
-+        }
-+    }
-+
-+    for (i = 0; i < 1; i++)
-+    {
-+        /* DRPcfg address and size settings */
-+        *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 4) = proc_k[i * 2].address;
-+        *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 8) = proc_k[i * 2].size;
-+
-+        DRPAI_DEBUG_PRINT("cfg_address:0x%08X, cfg_size:0x%08X\n", proc_k[i * 2].address, proc_k[i * 2].size);
-+
-+        /* DRP param address and size settings */
-+        *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 36) = proc_k[i * 2 + 1].address;
-+        *(uint32_t*)(p_dmabuf_vaddr + (DRPAI_SGL_DRP_DESC_SIZE * i) + 40) = proc_k[i * 2 + 1].size;
-+
-+        DRPAI_DEBUG_PRINT("parm_address:0x%08X, parm_size:0x%08X\n", proc_k[i * 2 + 1].address, proc_k[i * 2 + 1].size);
-+
-+    }
-+    __flush_dcache_area(p_dmabuf_vaddr, DRPAI_CMA_SIZE);
-+
-+    spin_lock_irqsave(&priv->lock, flags);
-+    /* Init drpai_status.err */
-+    priv->drpai_status.err = DRPAI_ERRINFO_SUCCESS;
-+
-+    /* IDLE -> RUN */
-+    priv->drpai_status.status = DRPAI_STATUS_RUN;
-+    DRPAI_DEBUG_PRINT("status2:   %d\n", priv->drpai_status.status);
-+    spin_unlock_irqrestore(&priv->lock, flags);
-+
-+    /* Kick */
-+    (void)R_DRPAI_DRP_Start(drp_base_addr[0], 0, p_dmabuf_phyaddr);
-+    (void)R_DRPAI_AIMAC_Start(aimac_base_address[0], 0, p_dmabuf_phyaddr + (DRPAI_SGL_DRP_DESC_SIZE * DRPAI_SEQ_NUM), &priv->lock);
-+
-+    DRPAI_DEBUG_WAIT();
-+    goto end;
-+end:
-+    if(-ETIMEDOUT != result)
-+    {
-+        /* Return semaphore when no ETIMEOUT */
-+        up(&priv->sem);
-+    }
-+    DRPAI_DEBUG_PRINT("end.\n");
-+
-+    return result;
-+}
-+
-+/* Public to Kernel space */
-+EXPORT_SYMBOL(drpai_open_k);
-+EXPORT_SYMBOL(drpai_close_k);
-+EXPORT_SYMBOL(drpai_start_k);
-+/* ISP */
-+#endif
 +
 +static long drpai_ioctl_read_drp_reg(struct file *filp, unsigned int cmd, unsigned long arg)
 +{
@@ -6662,8 +5885,6 @@ index 000000000000..26fa9fe4c3cc
 +end:
 +    DRPAI_DEBUG_PRINT("end.\n");
 +    return result;
-+#else
-+    return -ENOENT;
 +#endif
 +}
 +
@@ -6701,10 +5922,198 @@ index 000000000000..26fa9fe4c3cc
 +end:
 +    DRPAI_DEBUG_PRINT("end.\n");
 +    return result;
-+#else
-+    return -ENOENT;
 +#endif
 +}
++
++static int drpai_suspend_noirq(struct device *dev)
++{
++    int result = 0;
++    struct drpai_priv *priv = drpai_priv;
++    unsigned long flags;
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    int is_shared_drpai_used = -1;
++#endif
++    DRPAI_DEBUG_PRINT("start.\n");
++
++    if(unlikely(down_timeout(&priv->sem, MAX_SEM_TIMEOUT)))
++    {
++        result = -ETIMEDOUT;
++        goto end;
++    }
++
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    // Lock DRP-AI to avoid a race condition with DRP driver.
++    is_shared_drpai_used = R_DRPAI_LockDrpaiContStatus(drpai_shared_exclusion,
++                                                       &shared_mem_lock,
++                                                       PROCESS_CONTEXT,
++                                                       DRPFLAG_DRPAI_LOCK);
++    if(-1 == is_shared_drpai_used)
++    {
++        result = -EINPROGRESS;
++        goto end;
++    }
++    if( 0 != is_shared_drpai_used)
++    {
++        result = -EADDRNOTAVAIL;
++        goto end;
++    }
++
++    if(0 == R_DRPAI_IsDrpaiHwStatusActive(drpai_shared_exclusion))
++    {
++        /* Stop the DRP-AI only when the DRP-AI is initialised. */
++#endif
++    if(R_DRPAI_SUCCESS != drpai_reset_device(0))
++    {
++        result = -EIO;
++        dev_err(dev, "suspend: Failed to reset the DRP-AI.");
++        goto end;
++    }
++
++    dev_info(dev, "suspend: The stopping process has been executed.");
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    }
++    else
++    {
++        dev_info(dev, "suspend: The stopping process was skipped because the DRP-AI was already stopped.");
++    }
++#endif
++
++    // Update internal state
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    R_DRPAI_RecordDrpaiInactiveStatus(drpai_shared_exclusion,
++                                      &shared_mem_lock,
++                                      PROCESS_CONTEXT);
++#endif
++    spin_lock_irqsave(&priv->lock, flags);
++    // If stopping the DRP-AI forcibly during inference,
++    // We change status from DRPAI_ERRINFO_SUCCESS to DRPAI_ERRINFO_SUSPEND
++    // in order to notify statu to user via ioctl(DRPAI_GET_STATUS).
++    priv->drpai_status.err    = DRPAI_ERRINFO_SUCCESS;
++    if(DRPAI_STATUS_RUN == priv->drpai_status.status){
++        priv->drpai_status.err    = DRPAI_ERRINFO_SUSPEND;
++        dev_info(dev, "suspend: The DRP-AI has been forcibly stopped. Check the status with ioctl(DRPAI_GET_STATUS).");
++    }
++    priv->drpai_status.status = DRPAI_STATUS_INIT;
++    spin_unlock_irqrestore(&priv->lock, flags);
++
++    dev_info(dev, "suspend: OK");
++
++end:
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    if(0 == is_shared_drpai_used)
++    {
++        R_DRPAI_UnlockDrpaiContStatus(drpai_shared_exclusion,
++                                      &shared_mem_lock,
++                                      PROCESS_CONTEXT,
++                                      DRPFLAG_DRPAI_LOCK);
++    }
++#endif
++    if(-ETIMEDOUT != result)
++    {
++        up(&priv->sem);
++    }
++    DRPAI_DEBUG_PRINT("end.\n");
++    return result;
++}
++
++static int drpai_resume_noirq(struct device *dev)
++{
++    int result = 0;
++    unsigned long flags;
++    struct drpai_priv *priv = drpai_priv;
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    int is_shared_drpai_used = -1;
++#endif
++    DRPAI_DEBUG_PRINT("start.\n");
++
++    if(unlikely(down_timeout(&priv->sem, MAX_SEM_TIMEOUT)))
++    {
++        result = -ETIMEDOUT;
++        goto end;
++    }
++
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    // Lock DRP-AI to avoid a race condition with DRP driver.
++    is_shared_drpai_used = R_DRPAI_LockDrpaiContStatus(drpai_shared_exclusion,
++                                                       &shared_mem_lock,
++                                                       PROCESS_CONTEXT,
++                                                       DRPFLAG_DRPAI_LOCK);
++    if(-1 == is_shared_drpai_used)
++    {
++        result = -EINPROGRESS;
++        goto end;
++    }
++    if( 0 != is_shared_drpai_used)
++    {
++        result = -EADDRNOTAVAIL;
++        goto end;
++    }
++
++    if(-1 == R_DRPAI_IsDrpaiHwStatusActive(drpai_shared_exclusion))
++    {
++        /* The DRP-AI is initialised only when DRP-AI is stopped. */
++#endif
++    // Initialize the DRP-AI
++    drpai_init_device(0);
++
++    dev_info(dev, "resume: The initialization process has been executed.");
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    }
++    else
++    {
++        dev_info(dev, "resume: The initialization process was skipped because the DRP-AI was already initialized.");
++    }
++#endif
++
++    // Update internal state
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    R_DRPAI_RecordDrpaiActiveStatus(drpai_shared_exclusion,
++                                    &shared_mem_lock,
++                                    PROCESS_CONTEXT);
++#endif
++    spin_lock_irqsave(&priv->lock, flags);
++    priv->drpai_status.status = DRPAI_STATUS_IDLE;
++    priv->irq_flag            = IRQ_CHECK_DISABLE;
++    wake_up_interruptible(&drpai_waitq);
++    spin_unlock_irqrestore(&priv->lock, flags);
++
++    dev_info(dev, "resume: OK");
++
++end:
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    if(0 == is_shared_drpai_used)
++    {
++        R_DRPAI_UnlockDrpaiContStatus(drpai_shared_exclusion,
++                                      &shared_mem_lock,
++                                      PROCESS_CONTEXT,
++                                      DRPFLAG_DRPAI_LOCK);
++    }
++#endif
++    if(-ETIMEDOUT != result)
++    {
++        up(&priv->sem);
++    }
++    DRPAI_DEBUG_PRINT("end.\n");
++    return result;
++}
++
++static const struct dev_pm_ops drpai_pm_ops = {
++    NOIRQ_SYSTEM_SLEEP_PM_OPS(drpai_suspend_noirq, drpai_resume_noirq)
++};
++
++static struct platform_driver drpai_platform_driver =
++{
++    .driver = {
++        .name   = "drpai-rz",
++	.pm     = pm_ptr(&drpai_pm_ops),
++	.of_match_table = drpai_match,
++},
++    .probe      = drpai_probe,
++    .remove     = drpai_remove,
++#ifdef ENABLE_DRP_SUPPORT_SHARED_MEMORY
++    .shutdown   = drpai_shutdown,
++#endif
++};
 +
 +module_platform_driver(drpai_platform_driver);
 +MODULE_DEVICE_TABLE(of, drpai_match);
@@ -6718,9 +6127,9 @@ index 000000000000..26fa9fe4c3cc
 +#endif
 +MODULE_AUTHOR("Renesas Electronics Corporation");
 +MODULE_LICENSE("GPL v2");
-diff --git a/drivers/drpai/drpai-reg.h b/drivers/drpai/drpai-reg.h
+diff --git b/drivers/drpai/drpai-reg.h b/drivers/drpai/drpai-reg.h
 new file mode 100644
-index 000000000000..fc7fd57c0439
+index 0000000..c22391a
 --- /dev/null
 +++ b/drivers/drpai/drpai-reg.h
 @@ -0,0 +1,1053 @@
@@ -7715,7 +7124,7 @@ index 000000000000..fc7fd57c0439
 +#define CPG_PLLETH_MON_REG          (0x0B0uLL)
 +
 +// MSTOP
-+#define CPG_BUS_8_MSTOP_REG         (0xD1CuLL)     // 0=module operating(initial),1=stopÅF[8]=AIMAC, [9]=STP, [10]=DRP
++#define CPG_BUS_8_MSTOP_REG         (0xD1CuLL)     // 0=module operating(initial),1=stop : [8]=AIMAC, [9]=STP, [10]=DRP
 +#define CPG_BUS_9_MSTOP_REG         (0xD20uLL)
 +
 +// BUS
@@ -7777,9 +7186,9 @@ index 000000000000..fc7fd57c0439
 +#define MACCTL_ERR_STS_ADDR         (0x001C0008uLL)
 +
 +#endif /* DRPAI_REG__H */
-diff --git a/drivers/drpai/lock_drpai.c b/drivers/drpai/lock_drpai.c
+diff --git b/drivers/drpai/lock_drpai.c b/drivers/drpai/lock_drpai.c
 new file mode 100644
-index 000000000000..c0b8766c45d9
+index 0000000..c0b8766
 --- /dev/null
 +++ b/drivers/drpai/lock_drpai.c
 @@ -0,0 +1,592 @@
@@ -8375,9 +7784,9 @@ index 000000000000..c0b8766c45d9
 +    *p_rstc = rstc;
 +    return 0;
 +}
-diff --git a/drivers/drpai/lock_drpai.h b/drivers/drpai/lock_drpai.h
+diff --git b/drivers/drpai/lock_drpai.h b/drivers/drpai/lock_drpai.h
 new file mode 100644
-index 000000000000..830c7cffb5f2
+index 0000000..830c7cf
 --- /dev/null
 +++ b/drivers/drpai/lock_drpai.h
 @@ -0,0 +1,69 @@
@@ -8450,9 +7859,9 @@ index 000000000000..830c7cffb5f2
 +#endif /* __cplusplus */
 +
 +#endif /* R_DRPAI_LOCK_H */
-diff --git a/include/linux/drpai.h b/include/linux/drpai.h
+diff --git b/include/linux/drpai.h b/include/linux/drpai.h
 new file mode 100644
-index 000000000000..141574b3fa2c
+index 0000000..141574b
 --- /dev/null
 +++ b/include/linux/drpai.h
 @@ -0,0 +1,22 @@
@@ -8478,12 +7887,12 @@ index 000000000000..141574b3fa2c
 +#include <uapi/linux/drpai.h>
 +
 +#endif /* _DRPAI_H */
-diff --git a/include/uapi/linux/drpai.h b/include/uapi/linux/drpai.h
+diff --git b/include/uapi/linux/drpai.h b/include/uapi/linux/drpai.h
 new file mode 100644
-index 000000000000..8026211051e0
+index 0000000..49af6fa
 --- /dev/null
 +++ b/include/uapi/linux/drpai.h
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,149 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/*
 + * Driver for the Renesas RZ/V2H, RZ/V2N DRP-AI unit
@@ -8556,6 +7965,7 @@ index 000000000000..8026211051e0
 +#define DRPAI_ERRINFO_DRP_ERR               (-1)
 +#define DRPAI_ERRINFO_AIMAC_ERR             (-2)
 +#define DRPAI_ERRINFO_RESET                 (-3)
++#define DRPAI_ERRINFO_SUSPEND               (-4)
 +#define DRPAI_RESERVED_NUM                  (32)
 +#define DRPAI_SEQ_NUM                       (20)
 +#define DRPAI_EXE_AI                        (1)
@@ -8632,6 +8042,3 @@ index 000000000000..8026211051e0
 +#endif
 +
 +#endif /* _UAPI__DRPAI_H */
--- 
-2.34.1
-

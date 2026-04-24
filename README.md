@@ -24,7 +24,9 @@ None.
 <br>
 
 ## Installation  
-Please see [Installation](./installation/README.md).    
+This version of the DRP-AI driver is included in the RZ/V2N AI SDK v6.30.  
+Please refer [https://renesas-rz.github.io/rzv_ai_sdk/7.10/howto_build_aisdk_v2n.html](https://renesas-rz.github.io/rzv_ai_sdk/7.10/howto_build_aisdk_v2n.html) for installation instructions.  
+The DRP-AI driver is stored in ${YOCTO_WORK}/meta-rz-features/meta-rz-drpai.
 <br>
 
 ## Contents
@@ -43,9 +45,10 @@ The following functions are supported:
 * Execute AI inference based on the DRP-AI Object files *1 deployed in memory *2.
 * Wait for AI inference using "select" function or polling.
 * Stop forcibly during AI inference.
+* The RZ/V2N DRP-AI driver supports Suspend/Resume operations. *3.
     * *1 DRP-AI Object files: Refer to "[2 Terminology](#2-terminology)".
     * *2 Reservation area dedicated to DRP-AI.
-<br>  
+    * *3 If the process is suspended between the start of inference with ioctl(DRPAI_START) and the end of select(), the inference results at that point are not guaranteed.
 
 Note that DRP-AI cannot be used simultaneously with OpenCV Accelerator and video decoding function of Video Codec Library. Please ensure that DRP-AI, OpenCV Accelerator and video decoding function are used exclusively in your application.
 
@@ -377,7 +380,7 @@ When mode=DRPAI_ADRCONV_MODE_ADD(1), this function can be called to add a new se
 <img src=./img/Figure_4-2-5(5).png width=800>  
 
 #### [Remark]  
-The range specified by org_address and size, 0xFC00_0000 to 0xFFFFFF_FFFF, cannot be used because it is used by the DRP-AI Driver. Therefore, care should be taken not to use this area during DRP-AI translator i8 translation.  
+The range specified by org_address and size, 0xFC00_0000 to 0xFFFF_FFFF, cannot be used because it is used by the DRP-AI Driver. Therefore, care should be taken not to use this area during DRP-AI translator i8 translation.  
 When adding setting using DRPAI_ADRCONV_MODE_ADD, set org_address and conv_address so that they do not overlap with previous settings.
 <br>
 
@@ -544,6 +547,7 @@ int ioctl(int fd, DRPAI_GET_STATUS, drpai_status_t* drpai_status);
 |ETIMEDOUT(110)|Exclusive control of DRP-AI for multi process/threads failed.<br>To solve this error, check your process/thread that use DRP-AI works properly.<br>Or in most cases, DRP-AI H/W may not be working properly, so try to restart a system.|  
 |EINPROGRESS(115)|(Only for RZ/V2N) Failed to obtain a permission to use DRP-AI because other device drivers use DRP-AI. To solve this, try to recall this API function. |
 |EADDRNOTAVAIL(99)|(Only for RZ/V2N) This occurs because shared memory is not properly allocated during booting the kernel. Make sure that a property called  "memory-shared-for-drpai-ext-cont" is defined in the DRP properties of the device tree.|
+|EAGAIN(11)    |If the system is suspended after starting inference with ioctl(DRPAI_START) and before select() finishes |
 
 #### [Feature]  
 Gets the internal status of DRP-AI when this function is executed.  
@@ -870,7 +874,7 @@ None.
 |Type|Member name|Overview|
 |:---|:---|:---|
 |uint32_t   |org_address    |Address of before conversion.<br>- Valid only when mode != DRPAI_ADRCONV_MODE_DISABLE(0xFF)|
-|uint64_t   |conv_address   |Address of after conversion.<br>- Valid only when mode !=DRPAI_ADRCONV_MODE_DISABLE(0xFF)<br>- 40bit valid<br>- The lower 24 bits should be the same as conv_address.|
+|uint64_t   |conv_address   |Address of after conversion.<br>- Valid only when mode !=DRPAI_ADRCONV_MODE_DISABLE(0xFF)<br>- 40bit valid<br>- The lower 24 bits should be the same as org_address.|
 |uint32_t   |size           |Conversion Size.<br>- Valid only when mode !=DRPAI_ADRCONV_MODE_DISABLE(0xFF)|
 |uint8_t    |mode           |DRPAI_ADRCONV_MODE_REPLACE(0) : Enable address conversion, clear all conversion table that is set in previous and add new conversion table.<br>DRPAI_ADRCONV_MODE_ADD(1) : Enable address conversion and add new conversion table. (Old table is not cleared.)<br>DRPAI_ADRCONV_MODE_DISABLE(0xFF) : Clear all conversion table and disable address conversion.|
 
@@ -990,6 +994,21 @@ if((-1 == ret) && (ERESTART == errno))
 }
 ```
 <br>
+<br>
+
+### 4.5.3 Suspend / Resume
+The RZ/V2N DRP-AI driver supports Suspend/Resume operations.<br>
+When suspended, the hardware will automatically stop.<br>
+It will be restored automatically when you resume.<br>
+No user action is required.<br>
+However, if the process is suspended between the start of inference with ioctl(DRPAI_START) and the end of select(), ioctl(DRPAI_GET_STATUS) will return Error number EAGAIN.<br>
+The inference results at that time are not guaranteed, but you can continue to perform the next inference.<Br>
+See Figure 4-1 flowchart.<br>
+<br>
+Note<br>
+To use suspend/resume, a compatible AI SDK and evaluation board are required.
+<br>
+<br>
 
 ## 5. Kernel Settings
 
@@ -1015,37 +1034,17 @@ Device tree settings are shown as follows.
                          <GIC_SPI 915 IRQ_TYPE_LEVEL_HIGH>,
                          <GIC_SPI 916 IRQ_TYPE_LEVEL_HIGH>,
                          <GIC_SPI 917 IRQ_TYPE_LEVEL_HIGH>;
-            resets = <&cpg R9A09G056_DRPAI_ARESETN>;
+            resets = <&cpg 0xfd>;
             status = "disabled";
         };
 ```
 
-#### 5.3.2 DRP-AI part of r9a09g056n44-evk.dts
+#### 5.3.2 DRP-AI part of r9a09g056n48-rzv2n-evk.dts
 ```
-        shared_drp_reserved: SharedDRP@AFCFF000 {
-            reusable;
-            reg = <0x0 0xAFCFF000 0x0 0x00001000>;
-        };
-
-        image_buf0: image_buf@B0000000 {
-            compatible = "shared-dma-pool";
-            reusable;
-            reg = <0x0 0xB0000000 0x0 0x4000000>;
-            label = "image_buf0";
-        };
-
-        drp_reserved: DRP-AI@D0000000 {
-            reusable;
-            reg = <0x0 0xD0000000 0x0 0x20000000>;
-        };
-
         &drpai0 {
             memory-region = <&drp_reserved>;
-            image-memory-region = <&image_buf0>;
             memory-shared-for-drpai-ext-cont = <&shared_drp_reserved>;
             status = "okay";
         };
 
 ```
-Note that image_buf0 is defined when using u-dma-buf.
-

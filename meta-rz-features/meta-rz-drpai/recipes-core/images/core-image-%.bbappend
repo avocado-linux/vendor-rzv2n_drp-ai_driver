@@ -1,4 +1,5 @@
 IMAGE_INSTALL:append = " \
+	lib-tvm \
 	kernel-module-mmngr \
 	mmngrbuf-user-module \
 	mmngr-user-module \
@@ -6,13 +7,20 @@ IMAGE_INSTALL:append = " \
 	opencv \
 	opencv-dev \
 	sudo \
-	lib-tvm \
+	python3-modules \
+	python3-pip \
+	python3-wheel \
+	python3-setuptools \
+	python3-numpy \
+	python3-pandas \
+	python3-pillow \
+	python3-opencv \
 "
 
 TOOLCHAIN_TARGET_TASK:append = " drpai "
 
 update_issue() {
-    AI_SDK_VERSION="AI SDK V6.00 (Source Code)"
+    AI_SDK_VERSION="AI SDK V6.30 (Source Code)"
 
     case "${MACHINE}" in
     rzv2n-evk)
