@@ -15,8 +15,10 @@ The DRP-AI device driver provides an interface to easily handle the AI inference
 <br>
 
 ## Related Documents
-DRP-AI Translator i8 User's Manual (R20UT5336)  
-RZ/V2N User's Manual: Hardware (R01UH1072)  
+[Renesas RZ/V AI Web](https://renesas-rz.github.io/rzv_ai_sdk/latest/)  
+[RUHMI AI compiler for RZ/V](https://renesas-rz.github.io/rzv_drp-ai_tvm/)  
+[DRP-AI Translator i8 User's Manual (R20UT5336)](https://www.renesas.com/software-tool/drp-ai-translator-i8)  
+[RZ/V2N User's Manual: Hardware (R01UH1072)](https://renesas.com/rzv2n)  
 <br>  
 
 ## Restrictions
@@ -24,8 +26,8 @@ None.
 <br>
 
 ## Installation  
-This version of the DRP-AI driver is included in the RZ/V2N AI SDK v6.30.  
-Please refer [https://renesas-rz.github.io/rzv_ai_sdk/7.10/howto_build_aisdk_v2n.html](https://renesas-rz.github.io/rzv_ai_sdk/7.10/howto_build_aisdk_v2n.html) for installation instructions.  
+This version of the DRP-AI driver is included in the RZ/V2N AI SDK v8.00.  
+Please refer [https://renesas-rz.github.io/rzv_ai_sdk/8.00/howto_build_aisdk_v2n.html](https://renesas-rz.github.io/rzv_ai_sdk/8.00/howto_build_aisdk_v2n.html) for installation instructions.  
 The DRP-AI driver is stored in ${YOCTO_WORK}/meta-rz-features/meta-rz-drpai.
 <br>
 
