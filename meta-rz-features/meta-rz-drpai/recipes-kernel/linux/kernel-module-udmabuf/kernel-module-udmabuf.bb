@@ -22,7 +22,7 @@ SRC_URI:append = " \
     file://0002-update-to-use-device_create_managed_software_node-fu.patch \
 "
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/${BB_GIT_DEFAULT_DESTSUFFIX}"
 
 # Build u-dma-buf kernel module without suffix
 KERNEL_MODULE_PACKAGE_SUFFIX = ""

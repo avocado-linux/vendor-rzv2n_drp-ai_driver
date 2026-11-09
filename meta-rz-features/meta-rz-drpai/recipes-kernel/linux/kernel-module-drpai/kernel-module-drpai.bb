@@ -16,7 +16,7 @@ PV:rzv2n-family = "1.5.0"
 PV:smarc-rzv2l = "2.3.0"
 
 PR = "r0"
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 DRPAI_DRV_DIR = ""
 DRPAI_DRV_DIR:rzv2h-family = "v2h"

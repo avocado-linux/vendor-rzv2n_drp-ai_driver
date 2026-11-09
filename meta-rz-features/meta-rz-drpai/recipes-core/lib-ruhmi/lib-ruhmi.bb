@@ -1,7 +1,7 @@
 SUMMARY = "RUHMI LIB install into rootfs /usr/lib/"
 SECTION = "libs"
 LICENSE = "(Apache-2.0)"
-LIC_FILES_CHKSUM = "file://${WORKDIR}/lib_binaries/licenses/LICENSE;md5=0ba5044c64ef53cb0189c9546081e228"
+LIC_FILES_CHKSUM = "file://lib_binaries/licenses/LICENSE;md5=0ba5044c64ef53cb0189c9546081e228"
 
 RUHMI_VER = "RUHMI_R2026-06_v2.8.0-hotfix"
 
@@ -13,13 +13,14 @@ SRC_URI:smarc-rzv2l = "file://lib_ruhmi-RZV2L.tar.gz"
 RDEPENDS:${PN} = "mmngrbuf-user-module mmngr-user-module"
 DEPENDS = "mmngr-user-module mmngrbuf-user-module"
 
+S = "${UNPACKDIR}"
 SOLIBS = ".so"
 FILES_SOLIBSDEV = ""
 
 do_install() {
     install -d ${D}${libdir}/
 
-    for f in ${WORKDIR}/lib_binaries/*.${RUHMI_VER}; do
+    for f in ${UNPACKDIR}/lib_binaries/*.${RUHMI_VER}; do
         install -m 0755 $f ${D}${libdir}/
 
         fname=$(basename $f)
